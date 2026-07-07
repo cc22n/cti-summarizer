@@ -39,20 +39,40 @@ async def ws_alerts(websocket: WebSocket):
         pubsub = client.pubsub()
         await pubsub.subscribe(_CHANNEL)
 
-        async def _read_messages():
+        async def _forward_messages():
             async for message in pubsub.listen():
                 if message["type"] == "message":
-                    data = message.get("data", "")
-                    try:
-                        await websocket.send_text(data)
-                    except WebSocketDisconnect:
-                        return
+                    await websocket.send_text(message.get("data", ""))
 
+        async def _watch_disconnect():
+            # Drain incoming client frames; returns the moment the client
+            # closes, so dead connections are released immediately instead
+            # of lingering until the next Redis message fails to send.
+            while True:
+                frame = await websocket.receive()
+                if frame["type"] == "websocket.disconnect":
+                    return
+
+        forward_task = asyncio.create_task(_forward_messages())
+        watch_task = asyncio.create_task(_watch_disconnect())
         try:
-            await asyncio.wait_for(_read_messages(), timeout=None)
+            await asyncio.wait(
+                {forward_task, watch_task},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
         except (WebSocketDisconnect, asyncio.CancelledError):
             pass
         finally:
+            for task in (forward_task, watch_task):
+                task.cancel()
+            results = await asyncio.gather(
+                forward_task, watch_task, return_exceptions=True
+            )
+            for res in results:
+                if isinstance(res, Exception) and not isinstance(
+                    res, (WebSocketDisconnect, asyncio.CancelledError)
+                ):
+                    logger.warning("[ws] Stream task error: %s", res)
             await pubsub.unsubscribe(_CHANNEL)
             await client.aclose()
 

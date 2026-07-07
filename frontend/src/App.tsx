@@ -1,19 +1,31 @@
+import { lazy, Suspense } from "react";
 import { Navigate, createBrowserRouter, RouterProvider } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 import Layout from "./components/layout/Layout";
-import DashboardPage from "./pages/DashboardPage";
-import AlertsPage from "./pages/AlertsPage";
-import AlertDetailPage from "./pages/AlertDetailPage";
-import SummariesPage from "./pages/SummariesPage";
-import SourcesPage from "./pages/SourcesPage";
-import PredictionsPage from "./pages/PredictionsPage";
-import CorrelationsPage from "./pages/CorrelationsPage";
-import SemanticSearchPage from "./pages/SemanticSearchPage";
-import AdminPage from "./pages/AdminPage";
 import LoginPage from "./pages/LoginPage";
-import NotFoundPage from "./pages/NotFoundPage";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import LoadingSpinner from "./components/common/LoadingSpinner";
+
+// Pages are lazy-loaded so heavy chart dependencies (Recharts) are split
+// out of the initial bundle and fetched per route.
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const AlertsPage = lazy(() => import("./pages/AlertsPage"));
+const AlertDetailPage = lazy(() => import("./pages/AlertDetailPage"));
+const SummariesPage = lazy(() => import("./pages/SummariesPage"));
+const SourcesPage = lazy(() => import("./pages/SourcesPage"));
+const PredictionsPage = lazy(() => import("./pages/PredictionsPage"));
+const CorrelationsPage = lazy(() => import("./pages/CorrelationsPage"));
+const SemanticSearchPage = lazy(() => import("./pages/SemanticSearchPage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+
+function withSuspense(node: React.ReactNode) {
+  return (
+    <Suspense fallback={<LoadingSpinner text="Loading page..." />}>
+      {node}
+    </Suspense>
+  );
+}
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -43,25 +55,23 @@ const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: "alerts", element: <AlertsPage /> },
-      { path: "alerts/:id", element: <AlertDetailPage /> },
-      { path: "summaries", element: <SummariesPage /> },
-      { path: "sources", element: <SourcesPage /> },
-      { path: "predictions", element: <PredictionsPage /> },
-      { path: "correlations", element: <CorrelationsPage /> },
-      { path: "search", element: <SemanticSearchPage /> },
+      { index: true, element: withSuspense(<DashboardPage />) },
+      { path: "alerts", element: withSuspense(<AlertsPage />) },
+      { path: "alerts/:id", element: withSuspense(<AlertDetailPage />) },
+      { path: "summaries", element: withSuspense(<SummariesPage />) },
+      { path: "sources", element: withSuspense(<SourcesPage />) },
+      { path: "predictions", element: withSuspense(<PredictionsPage />) },
+      { path: "correlations", element: withSuspense(<CorrelationsPage />) },
+      { path: "search", element: withSuspense(<SemanticSearchPage />) },
       {
         path: "admin",
         element: (
-          <RequireAdmin>
-            <AdminPage />
-          </RequireAdmin>
+          <RequireAdmin>{withSuspense(<AdminPage />)}</RequireAdmin>
         ),
       },
     ],
   },
-  { path: "*", element: <NotFoundPage /> },
+  { path: "*", element: withSuspense(<NotFoundPage />) },
 ]);
 
 export default function App() {
