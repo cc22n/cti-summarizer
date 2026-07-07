@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CTI Summarizer</title>
+
+    <!-- Prevent MIME-type sniffing -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+
+    <!-- Restrict referrer information sent with requests -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <!-- Content Security Policy
+         - default-src 'self'         : block unknown origins by default
+         - script-src 'self'          : only scripts from this origin
+         - style-src 'self' 'unsafe-inline' : Tailwind CSS requires inline styles
+         - img-src 'self' data: blob: : allow data URIs (chart canvas exports) and blobs
+         - connect-src 'self' ws: wss:: allow API + WebSocket connections
+         - frame-ancestors 'none'     : block iframe embedding (clickjacking)
+         - object-src 'none'          : no Flash / plugins
+         - base-uri 'self'            : prevent <base> tag hijacking
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: blob:;
+        connect-src 'self' ws: wss: http://localhost:8000 ws://localhost:8000;
+        frame-ancestors 'none';
+        object-src 'none';
+        base-uri 'self';
+      "
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

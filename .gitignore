@@ -1,0 +1,46 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.claude
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Virtual environments
+.venv/
+venv/
+
+# Database files
+*.db
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs and pids
+*.log
+*.pid
+IMPROVEMENT_PLAN.md
+
+# Celery Beat schedule files (shelve creates .bak/.dat/.dir on Windows)
+celerybeat-schedule
+celerybeat-schedule.db
+celerybeat-schedule.bak
+celerybeat-schedule.dat
+celerybeat-schedule.dir
+
+# IDE
+.idea/
+.vscode/
+
+# Frontend
+node_modules/
+frontend/dist/
+
+# Planning / phase documents (not for distribution)
+PHASE_*.md
+*_PLAN.md

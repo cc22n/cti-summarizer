@@ -1,0 +1,108 @@
+services:
+  # ── Infrastructure ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cti_summarizer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ── API ───────────────────────────────────────────────────────────────────────
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/cti_summarizer
+      REDIS_URL: redis://redis:6379/0
+      CORS_ORIGINS: http://localhost:5173
+      APP_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c",
+        "import httpx; httpx.get('http://localhost:8000/health', timeout=8).raise_for_status()"]
+      interval: 30s
+      timeout: 15s
+      start_period: 60s
+      retries: 3
+    restart: unless-stopped
+
+  # ── Celery worker ─────────────────────────────────────────────────────────────
+  worker:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/cti_summarizer
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["celery", "-A", "app.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    restart: unless-stopped
+
+  # ── Celery Beat scheduler ─────────────────────────────────────────────────────
+  beat:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/cti_summarizer
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - beatdata:/var/celerybeat
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["celery", "-A", "app.celery_app", "beat", "--loglevel=info",
+              "--schedule=/var/celerybeat/celerybeat-schedule"]
+    restart: unless-stopped
+
+  # ── React frontend (dev server) ───────────────────────────────────────────────
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:8000/api/v1
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  beatdata:

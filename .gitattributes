@@ -1,0 +1,32 @@
+# Normalize line endings: store LF in repo, checkout as native on each OS
+* text=auto
+
+# Shell scripts must always use LF (CRLF breaks sh/bash in Docker/Linux)
+*.sh text eol=lf
+entrypoint.sh text eol=lf
+
+# Python files: LF in repo
+*.py text eol=lf
+
+# Frontend
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+
+# Config files
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+*.md text eol=lf
+Dockerfile text eol=lf
+
+# Binary files — no line ending conversion
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary

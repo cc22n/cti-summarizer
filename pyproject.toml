@@ -1,0 +1,17 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+exclude = ["alembic/", ".venv/", "dist/"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E501",  # line too long
+    "F401",  # imported but unused (re-exports in __init__.py)
+    "E711",  # comparison to None (SQLAlchemy uses == None in filters)
+    "E712",  # comparison to True/False
+]
