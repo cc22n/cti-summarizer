@@ -8,6 +8,9 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? "github" : "list",
   timeout: 30_000,
+  expect: {
+    timeout: 10_000,
+  },
   use: {
     baseURL: "http://localhost:5173",
     trace: "on-first-retry",

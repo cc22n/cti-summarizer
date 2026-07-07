@@ -13,26 +13,31 @@ test.describe("Authenticated navigation", () => {
 
   test("authenticated user sees the Dashboard heading at /", async ({ page }) => {
     await page.goto("/");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   });
 
   test("/alerts shows the Alerts heading", async ({ page }) => {
     await page.goto("/alerts");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByRole("heading", { name: "Alerts" })).toBeVisible();
   });
 
   test("/sources shows the Sources heading", async ({ page }) => {
     await page.goto("/sources");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByRole("heading", { name: "Sources" })).toBeVisible();
   });
 
   test("/summaries shows the Summaries heading", async ({ page }) => {
     await page.goto("/summaries");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByRole("heading", { name: "Summaries" })).toBeVisible();
   });
 
   test("/predictions shows the Predictions heading", async ({ page }) => {
     await page.goto("/predictions");
+    await page.waitForLoadState("networkidle");
     await expect(page.getByRole("heading", { name: "Predictions" })).toBeVisible();
   });
 });
