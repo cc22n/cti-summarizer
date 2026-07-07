@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -69,10 +69,21 @@ def _apply_search(query, search: str, db=None):
     return query
 
 
+# Severity is stored as text; sort by threat rank, not alphabetically.
+# desc -> critical first, asc -> info first. Unknown values sort last.
+_SEVERITY_RANK = case(
+    (NormalizedAlert.severity == "critical", 5),
+    (NormalizedAlert.severity == "high", 4),
+    (NormalizedAlert.severity == "medium", 3),
+    (NormalizedAlert.severity == "low", 2),
+    (NormalizedAlert.severity == "info", 1),
+    else_=0,
+)
+
 _SORT_FIELDS: dict = {
     "normalized_at": NormalizedAlert.normalized_at,
     "published_date": NormalizedAlert.published_date,
-    "severity": NormalizedAlert.severity,
+    "severity": _SEVERITY_RANK,
     "cvss_score": NormalizedAlert.cvss_score,
     "source_name": NormalizedAlert.source_name,
     "title": NormalizedAlert.title,
@@ -278,6 +289,17 @@ def export_alerts(
     return _export_csv(alerts)
 
 
+def _csv_safe(value: str | None) -> str:
+    """Neutralize spreadsheet formula injection in feed-controlled text.
+
+    Titles come from external CTI feeds; a leading =, +, -, @, tab or CR
+    makes Excel/LibreOffice evaluate the cell as a formula on open.
+    """
+    if value and value[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + value
+    return value or ""
+
+
 def _export_csv(alerts: list) -> StreamingResponse:
     """Stream alerts as CSV."""
     def _rows():
@@ -294,7 +316,7 @@ def _export_csv(alerts: list) -> StreamingResponse:
             writer = csv.writer(buf)
             writer.writerow([
                 alert.id,
-                alert.title,
+                _csv_safe(alert.title),
                 alert.severity,
                 alert.source_name,
                 float(alert.cvss_score) if alert.cvss_score else "",

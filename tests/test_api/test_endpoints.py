@@ -470,24 +470,28 @@ class TestAlertFilters:
         assert "ACK-2" not in titles
 
     def test_sort_by_severity_asc(self, client, db, sample_raw_alert):
+        # Sorts by threat rank, not alphabetically: asc = least severe first
         _make_alert(db, sample_raw_alert, severity="critical", title="S-CRIT")
+        _make_alert(db, sample_raw_alert, severity="medium", title="S-MED")
         _make_alert(db, sample_raw_alert, severity="info", title="S-INFO")
 
         resp = client.get("/api/v1/alerts?sort_by=severity&sort_order=asc")
         assert resp.status_code == 200
         items = resp.json()["items"]
         severities = [i["severity"] for i in items]
-        assert severities == sorted(severities)
+        assert severities == ["info", "medium", "critical"]
 
     def test_sort_by_severity_desc(self, client, db, sample_raw_alert):
+        # desc = most severe first (critical > medium > info)
         _make_alert(db, sample_raw_alert, severity="critical", title="D-CRIT")
+        _make_alert(db, sample_raw_alert, severity="medium", title="D-MED")
         _make_alert(db, sample_raw_alert, severity="info", title="D-INFO")
 
         resp = client.get("/api/v1/alerts?sort_by=severity&sort_order=desc")
         assert resp.status_code == 200
         items = resp.json()["items"]
         severities = [i["severity"] for i in items]
-        assert severities == sorted(severities, reverse=True)
+        assert severities == ["critical", "medium", "info"]
 
     def test_date_from_filter(self, client, db, sample_raw_alert):
         past = _make_alert(db, sample_raw_alert, severity="low", title="OLD-ALERT")
@@ -536,6 +540,19 @@ class TestExportEndpoints:
         assert resp.status_code == 200
         assert "CRIT-EXP" in resp.text
         assert "LOW-EXP" not in resp.text
+
+    def test_export_csv_neutralizes_formula_injection(self, client, db, sample_raw_alert):
+        # A feed-controlled title starting with = must not reach the CSV
+        # as a bare formula (Excel/LibreOffice would execute it on open).
+        _make_alert(
+            db, sample_raw_alert, severity="high",
+            title="=HYPERLINK(\"http://evil.test\",\"click\")",
+        )
+
+        resp = client.get("/api/v1/alerts/export?format=csv")
+        assert resp.status_code == 200
+        assert "'=HYPERLINK" in resp.text
+        assert "\n\"=HYPERLINK" not in resp.text
 
     def test_export_stix_returns_bundle(self, client, sample_normalized_alert):
         resp = client.get("/api/v1/alerts/export?format=stix")
