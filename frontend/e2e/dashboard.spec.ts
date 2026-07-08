@@ -1,13 +1,13 @@
 import { test, expect } from "@playwright/test";
-import { setLoggedIn, mockDashboardApi } from "./fixtures";
+import { setLoggedIn, mockAppApi } from "./fixtures";
 
 test.describe("Authenticated navigation", () => {
   test.beforeEach(async ({ page }) => {
     // Catch-all registered FIRST = lowest priority in Playwright (last added wins).
-    // Specific mocks registered afterwards take precedence over this fallback.
+    // mockAppApi registers correctly shaped responses for every endpoint the
+    // pages dereference; a bare {} fallback makes pages crash before rendering.
     await page.route("**/api/v1/**", (route) => route.fulfill({ json: {} }));
-    await page.route("**/api/v1/sources**", (route) => route.fulfill({ json: [] }));
-    await mockDashboardApi(page);
+    await mockAppApi(page);
     await setLoggedIn(page);
   });
 
