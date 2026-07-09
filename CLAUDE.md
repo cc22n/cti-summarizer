@@ -37,7 +37,7 @@ Threat intelligence platform that ingests public CTI feeds (NVD, CISA KEV, Alien
 | Frontend | React 19 + Vite 8 + TypeScript 5.9 + Recharts 3 + TanStack Query v5 + react-router |
 | Styling | Tailwind CSS v4 (@tailwindcss/vite plugin) |
 | Testing (backend) | pytest + httpx (SQLite in-memory) — 278 tests |
-| Testing (frontend) | Vitest (70 unit tests) + Playwright e2e (frontend/e2e/) |
+| Testing (frontend) | Vitest (70 unit tests) + Playwright e2e (17 tests in frontend/e2e/) |
 | HTTP Client | httpx (async) |
 
 ---
@@ -86,7 +86,8 @@ cti-summarizer/
 |-- frontend/
 |   |-- src/
 |   |   |-- App.tsx             # React.lazy per page + Suspense (code splitting);
-|   |   |                       # RequireAuth / RequireAdmin route guards
+|   |   |                       # RequireAuth / RequireAdmin route guards;
+|   |   |                       # RouteError as errorElement at every route level
 |   |   |-- contexts/           # AuthContext (JWT session), SidebarContext
 |   |   |-- types/ services/ hooks/  # incl. useRealtimeAlerts (WebSocket),
 |   |   |                            # useDebouncedValue, useUsers, useCategories
@@ -95,7 +96,9 @@ cti-summarizer/
 |   |   |-- pages/              # Dashboard, Alerts, AlertDetail, Sources, Summaries,
 |   |                           # Predictions, Correlations, SemanticSearch, Admin,
 |   |                           # Login, NotFound
-|   |-- e2e/                    # Playwright specs (login, dashboard, not-found)
+|   |-- e2e/                    # Playwright specs: login, dashboard, not-found,
+|   |                           # alerts-flow (filter/pagination/acknowledge/crash
+|   |                           # fallback); fixtures.ts exposes mockAppApi()
 |   |-- tsconfig.json           # Project references root (files: [])
 |-- scripts/                    # setup_db.py, run_ingestion.py, manage_users.py
 |-- tests/                      # test_adapters/ test_api/ test_services/ test_workers/
@@ -282,12 +285,14 @@ cd frontend && npm run e2e     # Playwright e2e
 12. **Graceful degradation** - Redis down = no cache/lockout/WS but API keeps working; missing API keys log warnings instead of crashing
 13. **React.lazy code splitting** - initial bundle 298 KB; Recharts (356 KB) loads only on chart pages; LoginPage stays eager
 14. **WebSocket disconnect watcher** - concurrent task drains client frames so dead connections release Redis subscriptions immediately
+15. **Route-level errorElement (RouteError)** - the app-level ErrorBoundary never sees route render errors (React Router catches them first); a pathless wrapper inside Layout's children renders the fallback with the sidebar intact
 
 ---
 
 ## Testing
 - Backend: SQLite in-memory, tables auto-created per test; adapters mocked with httpx; API via TestClient with overridden DB dependency. 278 tests.
-- Frontend: Vitest (components, pages, hooks — 70 tests) + Playwright e2e in `frontend/e2e/` (test-results/ and playwright-report/ are gitignored).
+- Frontend: Vitest (components, pages, hooks — 70 tests) + Playwright e2e in `frontend/e2e/` (17 tests: headings/login/404 plus alert flows — severity filter, pagination, acknowledge, crash fallback). test-results/ and playwright-report/ are gitignored.
+- Playwright gotchas: mocks must return correctly shaped payloads (pages dereference response fields and a bare `{}` crashes them into the error fallback); the LAST registered `page.route` wins, so register broad patterns before specific ones; `workers: 1` because parallel workers race the Vite dev server's on-demand transform of lazy chunks.
 - Run: `pytest -v --tb=short` | coverage: `pytest --cov=app --cov-report=html`
 
 ---
