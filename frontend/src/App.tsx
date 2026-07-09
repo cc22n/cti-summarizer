@@ -5,6 +5,7 @@ import Layout from "./components/layout/Layout";
 import LoginPage from "./pages/LoginPage";
 import ErrorBoundary from "./components/common/ErrorBoundary";
 import LoadingSpinner from "./components/common/LoadingSpinner";
+import RouteError from "./components/common/RouteError";
 
 // Pages are lazy-loaded so heavy chart dependencies (Recharts) are split
 // out of the initial bundle and fetched per route.
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
   {
     path: "/login",
     element: <LoginPage />,
+    errorElement: <RouteError />,
   },
   {
     path: "/",
@@ -54,24 +56,33 @@ const router = createBrowserRouter([
         <Layout />
       </RequireAuth>
     ),
+    errorElement: <RouteError />,
     children: [
-      { index: true, element: withSuspense(<DashboardPage />) },
-      { path: "alerts", element: withSuspense(<AlertsPage />) },
-      { path: "alerts/:id", element: withSuspense(<AlertDetailPage />) },
-      { path: "summaries", element: withSuspense(<SummariesPage />) },
-      { path: "sources", element: withSuspense(<SourcesPage />) },
-      { path: "predictions", element: withSuspense(<PredictionsPage />) },
-      { path: "correlations", element: withSuspense(<CorrelationsPage />) },
-      { path: "search", element: withSuspense(<SemanticSearchPage />) },
       {
-        path: "admin",
-        element: (
-          <RequireAdmin>{withSuspense(<AdminPage />)}</RequireAdmin>
-        ),
+        // Pathless wrapper: render errors from any page bubble here, so the
+        // fallback shows inside the Layout (sidebar stays) instead of React
+        // Router's default developer error screen.
+        errorElement: <RouteError />,
+        children: [
+          { index: true, element: withSuspense(<DashboardPage />) },
+          { path: "alerts", element: withSuspense(<AlertsPage />) },
+          { path: "alerts/:id", element: withSuspense(<AlertDetailPage />) },
+          { path: "summaries", element: withSuspense(<SummariesPage />) },
+          { path: "sources", element: withSuspense(<SourcesPage />) },
+          { path: "predictions", element: withSuspense(<PredictionsPage />) },
+          { path: "correlations", element: withSuspense(<CorrelationsPage />) },
+          { path: "search", element: withSuspense(<SemanticSearchPage />) },
+          {
+            path: "admin",
+            element: (
+              <RequireAdmin>{withSuspense(<AdminPage />)}</RequireAdmin>
+            ),
+          },
+        ],
       },
     ],
   },
-  { path: "*", element: withSuspense(<NotFoundPage />) },
+  { path: "*", element: withSuspense(<NotFoundPage />), errorElement: <RouteError /> },
 ]);
 
 export default function App() {
